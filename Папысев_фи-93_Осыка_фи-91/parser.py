@@ -1,3 +1,25 @@
+
+def error(message):
+    # do something maybe =/ ...
+    print("\nERROR:", message, '\n')
+
+
+    
+def check_commands(cmd):
+    if cmd['cmd'] not in ['INSERT', 'SELECT', 'DELETE', 'CREATE']:
+        error("Incorrect command")
+        return 1
+    if cmd['table_name'] == '' or cmd['table_name'] == 'WHERE':
+        error("Incorrect table name")
+        return 1
+    if cmd['cmd'] == "SELECT" or  cmd['cmd'] == "DELETE":
+        for key in cmd['condition']:
+            if cmd['condition'][key] == '':
+                error("Incorrect condition state")
+                return 1
+    return 0
+        
+
 def parse(cmd, print_parsed=False):
     cmds = {}
     
@@ -7,15 +29,17 @@ def parse(cmd, print_parsed=False):
     # split by space
     lst = cmd.split()
     # first word always command
-    cmds['cmd'] = lst[0].strip(' \n\t“”"').upper()
+    cmds['cmd'] = lst[0].replace('\n', '').replace(' ', '').replace('\t', '').upper()
     
     # detect table name
     if 'INTO' in cmd:
-        cmds['table_name'] = cmd[cmd.upper().find('INTO') + 4:cmd.find('(')].strip()
+        name = cmd[cmd.upper().find('INTO') + 4: cmd.find('(')].replace(',', ' ')
+        cmds['table_name'] = name.split()[0]
+
     elif 'FROM' in cmd:
         cmds['table_name'] = cmd[cmd.upper().find('FROM') + 4::].split()[0].strip()
     else:
-        cmds['table_name'] = lst[1].strip(' \n\t“”"')
+        cmds['table_name'] = lst[1].replace('\n', '').replace('\t', '')
         
     # work with arguments for INSERT
     if cmds['cmd'] == 'INSERT':
@@ -33,9 +57,10 @@ def parse(cmd, print_parsed=False):
     if cmds['cmd'] == 'DELETE':
         parse_delete(cmd, cmds)
         
-    if print_parsed:
+    if print_parsed and not check_commands(cmds):
         for key in cmds:
             print(key, ' --> ', cmds[key])
+    # check cmd        
     return cmds
 
 
@@ -60,8 +85,10 @@ def parse_create(cmd, dictionary):
     
 def parse_insert(cmd, dictionary):
     args = []
-    for arg in cmd[cmd.find("(")+1: cmd.find(')')].split(','):
-        args.append(arg.strip(' \n\t“”"') )
+    for arg in cmd[max(cmd.find("(")+1, 1+cmd.find(dictionary['table_name']) + len(dictionary['table_name'])): cmd.find(')')].replace(',', ' ').split(' '):
+        arg = arg.replace('\n', ' ').replace('\t', ' ').replace(' ', '')
+        if len(arg) >= 1 and arg!='\n':
+            args.append(arg)
 
     dictionary['args'] = args
     
@@ -69,12 +96,15 @@ def parse_insert(cmd, dictionary):
 def parse_select(cmd, cmds):
     args = []
     conditions = []
+    cmd = cmd.replace('\n', ' ').replace('\t', ' ')
 
     # find columns
-    for arg in cmd[cmd.upper().find("SELECT")+6: cmd.upper().find('FROM')].split(','):
+    for arg in cmd[cmd.upper().find("SELECT")+6: cmd.upper().find('FROM')].replace(',', ' ').split(' '):
         if '*' in arg:
             break
-        args.append(arg.strip(' \n\t“”"') )
+        arg = arg.replace(' ', '')
+        if len(arg) >= 1 and arg!='\n':
+            args.append(arg)
 
     # if there is FULL_JOIN
     if ('FULL_JOIN') in cmd.upper():
@@ -83,7 +113,7 @@ def parse_select(cmd, cmds):
 
         # join condition
         cmds['join_args'] = []
-        condition = cmd[cmd.find("ON")+2 : cmd.find('WHERE')].split('=')
+        condition = cmd[cmd.find("ON")+1 : cmd.find('WHERE')].split('=')
         for col in condition:
             cmds['join_args'].append(col.strip('\n\t“”" '))
 
@@ -91,41 +121,29 @@ def parse_select(cmd, cmds):
     # if there is WHERE keyword:
     cmds['condition'] = []
     if ('WHERE') in cmd.upper():
-        cols = []
+        cols = {'value1':'', 'operator':'', 'value2':''}
         condition = cmd[cmd.find("WHERE")+5 : cmd.find(';')].split()
         for col in condition:
             if '"' in col or '“' in col or "'" in col:
-                cols.append({'value': col.strip('"“”\n\t')})
+                cols['value1'] = col.strip('"“”\n\t')
             elif '>' in col or '=' in col or '<' in col:
-                cols.append({'operator':col.strip('\n\t')})
+                cols['operator'] = col.strip('\n\t')
             else:
-                cols.append({'column':col.strip('\n\t')})
+                cols['value2'] = col.strip('\n\t')
         cmds['condition'] = cols
 
     cmds['args'] = args
     
 
 def parse_delete(cmd, cmds):
-    cols = []
+    cols = {'value1':'', 'operator':'', 'value2':''}
     if ('WHERE') in cmd.upper():
         condition = cmd[cmd.find("WHERE")+5 : cmd.find(';')].split()
         for col in condition:
             if '"' in col or '“' in col or "'" in col:
-                cols.append({'value': col.strip('"“”\n\t')})
+                cols['value1'] = col.strip('"“”\n\t')
             elif '>' in col or '=' in col or '<' in col:
-                cols.append({'operator':col.strip('\n\t')})
+                cols['operator'] = col.strip('\n\t')
             else:
-                cols.append({'column':col.strip('\n\t')})
+                cols['value2'] = col.strip('\n\t')
         cmds['condition'] = cols
-
-
-
-d = parse('''
-
-SELECT cat_id, cat_owner_id 
-  FROM cats 
-  WHERE name = “Murzik”;
-
-
-'''
-, 1)
