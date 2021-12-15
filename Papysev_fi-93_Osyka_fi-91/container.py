@@ -1,16 +1,12 @@
 # Binary tree
 # Binary tree
 class Row:
-    def __init__(self, values, index):
+    def __init__(self, values, index_value):
         self.value = values
-        self.index = index
-    
+        self.index_value = index_value
     
     def disp(self):
-        row_text = "|"
-        for v in self.values:
-            row_text  = row_text + " " + str(v) + " |"
-        return row_text
+        return self.value
 
 class Node:
     def __init__(self, row):
@@ -19,8 +15,8 @@ class Node:
         self.right = None
 
 class Tree:
-    def __init__(self):
-        self.root = None
+    def __init__(self, row_init):
+        self.root = Node(row_init)
         self.size = 0
     
 
@@ -36,7 +32,7 @@ class Tree:
 
 
     def __add(self, row, node):
-        if row.index < node.value.index:
+        if row.index_value < node.value.index_value:
             if node.left is None:
                 node.left = Node(row)
             else:
@@ -57,38 +53,49 @@ class Tree:
 
 
     def __find(self, row, node):
-        if row.index == node.value.index:
+        if row.index_value == node.value.index_value:
             return node
-        elif (row.index < node.value.index and node.left is not None):
+        elif (row.index_value < node.value.index_value and node.left is not None):
             return self.__find(row, node.left)
-        elif (row.index > node.value.index and node.right is not None):
+        elif (row.index_value > node.value.index_value and node.right is not None):
             return self.__find(row, node.right)
-
-
+  
+        
     def find_successor(self, node):
         while node.left is not None:
             node = node.left
         return node
 
 
-    def delete(self, node, row):
-        if node == None:
-            return node
-        if row.index == node.value.index:
-            if node.left is None:
-                node = node.right
-            elif node.right is None:
-                node = node.left
-            else:
-                node = self.find_successor(node)
-                node.right = self.delete(node.right, node.value)
-        elif row.index < node.value.index:
-            node.left = self.delete(node.left, node.value)
+    def delete(self, root, row):
+
+        if root is None:
+            return root
+            
+            
+        if row.index_value < root.value.index_value:
+            root.left = self.delete(root.left, row)
+
+        elif(row.index_value > root.value.index_value):
+            root.right = self.delete(root.right, row)
+
         else:
-            node.right = self.delete(node.right, node.value)
-        return node
+            if root.left is None:
+                temp = root.right
+                root = None
+                return temp
 
+            elif root.right is None:
+                temp = root.left
+                root = None
+                return temp
 
+            temp = self.find_successor(root.right)
+            root.value = temp.value
+
+            root.right = self.delete(root.right, temp.value)
+            
+        return root
 
 
 
@@ -106,15 +113,25 @@ class Tree:
     def __disp(self, node, c):
         if node is not None:
             self.__disp(node.left, c+1)
-            print( '   '*c, str(node.value.disp()))
+            if node is not self.root:
+                print( '   '*c, str(node.value.disp()))
             self.__disp(node.right, c+1)
 
 
-
-def pass_tree(node, array):
+def pass_tree(root, node, array):
     if node:
-        pass_tree(node.left, array)
-        array.append(node.value)
-        pass_tree(node.right, array)
+        pass_tree(root, node.left, array)
+        if node is not root:
+            array.append(node.value.disp() + [node.value])
+        pass_tree(root, node.right, array)
 
 
+def pass_tree_dfs(root, node, array):
+    if node:
+        if node != root:
+            array.append(node.value.value)
+        pass_tree_dfs(root, node.left, array)
+        pass_tree_dfs(root, node.right, array)
+
+def message(text):
+    print(text)

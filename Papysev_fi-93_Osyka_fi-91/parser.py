@@ -1,4 +1,7 @@
 
+
+
+
 def error(message):
     # do something maybe =/ ...
     print("\nERROR:", message, '\n')
@@ -6,13 +9,19 @@ def error(message):
 
     
 def check_commands(cmd):
+    return
     if cmd['cmd'] not in ['INSERT', 'SELECT', 'DELETE', 'CREATE']:
         error("Incorrect command")
         return 1
     if cmd['table_name'] == '' or cmd['table_name'] == 'WHERE':
         error("Incorrect table name")
         return 1
-    if cmd['cmd'] == "SELECT" or  cmd['cmd'] == "DELETE":
+    if cmd['cmd'] == "SELECT":
+        for key in cmd['condition']:
+            if cmd['condition'][key] == '':
+                error("Incorrect condition state")
+                return 1
+    if cmd['cmd'] == "DELETE" and cmd['condition'] :
         for key in cmd['condition']:
             if cmd['condition'][key] == '':
                 error("Incorrect condition state")
@@ -20,9 +29,21 @@ def check_commands(cmd):
     return 0
         
 
-def parse(cmd, print_parsed=False):
+def parse(cmd):
+    arr = []
+    try:
+        for cmd_single in cmd.split(";"):
+            arr.append(parses(cmd_single + ";"))
+    except:
+        print("[parsing fatal error]")
+
+    return arr
+
+def parses(cmd, print_parsed=False):
+    if len(cmd) < 5:
+        return None
     cmds = {}
-    cmd  = cmd + ";"
+    cmd = cmd + ";"
     # find end of command
     cmd = cmd[0:cmd.find(';')]
     
@@ -97,7 +118,7 @@ def parse_select(cmd, cmds):
     args = []
     conditions = []
     cmd = cmd.replace('\n', ' ').replace('\t', ' ')
-
+    cmds['JOIN'] = False
     # find columns
     for arg in cmd[cmd.upper().find("SELECT")+6: cmd.upper().find('FROM')].replace(',', ' ').split(' '):
         if '*' in arg:
@@ -108,28 +129,43 @@ def parse_select(cmd, cmds):
 
     # if there is FULL_JOIN
     if ('FULL_JOIN') in cmd.upper():
+        cmds['JOIN'] = True
         # second table name
         cmds['join_table'] = cmd[cmd.upper().find("FULL_JOIN")+9: cmd.find('ON')].strip(' \n\t“”"')
 
         # join condition
         cmds['join_args'] = []
-        condition = cmd[cmd.find("ON")+1 : cmd.find('WHERE')].split('=')
+        condition = cmd[cmd.find("ON")+2: cmd.find('WHERE')].split('=')
         for col in condition:
-            cmds['join_args'].append(col.strip('\n\t“”" '))
+            cmds['join_args'].append(col.strip('\n\t“”" ').strip("'"))
 
 
     # if there is WHERE keyword:
-    cmds['condition'] = []
+    cmds['condition'] = None
     if ('WHERE') in cmd.upper():
         cols = {'value1':'', 'operator':'', 'value2':''}
-        condition = cmd[cmd.find("WHERE")+5 : cmd.find(';')].split()
-        for col in condition:
-            if '"' in col or '“' in col or "'" in col:
-                cols['value1'] = col.strip('"“”\n\t')
-            elif '>' in col or '=' in col or '<' in col:
-                cols['operator'] = col.strip('\n\t')
+        condition_str = cmd[cmd.find("WHERE")+5 : ].strip('"“”\n\t').strip("'")
+        
+        index = max(condition_str.find('>'), condition_str.find('='), condition_str.find('<'), condition_str.find('!')) 
+
+        for c in condition_str[0:index]:
+            if c not in " ><=!":
+                cols['value1'] += c;
             else:
-                cols['value2'] = col.strip('\n\t')
+                pass
+        for c in condition_str[index-1:]:
+            print(c)
+            if c in "><=!":
+                cols['operator'] += c
+            else:
+                pass
+                
+        for c in condition_str[index+1:]:
+            if c not in " ><=!":
+                cols['value2'] += c
+            else:
+                pass
+                
         cmds['condition'] = cols
 
     cmds['args'] = args
@@ -138,12 +174,25 @@ def parse_select(cmd, cmds):
 def parse_delete(cmd, cmds):
     cols = {'value1':'', 'operator':'', 'value2':''}
     if ('WHERE') in cmd.upper():
-        condition = cmd[cmd.find("WHERE")+5 : cmd.find(';')].split()
-        for col in condition:
-            if '"' in col or '“' in col or "'" in col:
-                cols['value1'] = col.strip('"“”\n\t')
-            elif '>' in col or '=' in col or '<' in col:
-                cols['operator'] = col.strip('\n\t')
+        condition_str = cmd[cmd.find("WHERE")+5 :].strip('"“”\n\t').strip("'")
+        
+        index = max(condition_str.find('>'), condition_str.find('='), condition_str.find('<'), condition_str.find('!')) 
+
+        for c in condition_str[0:index]:
+            if c not in " ><=!":
+                cols['value1'] += c;
             else:
-                cols['value2'] = col.strip('\n\t')
+                pass
+        for c in condition_str[index-1:]:
+            if c in "><=!":
+                cols['operator'] += c
+            else:
+                pass
+                
+        for c in condition_str[index+1:]:
+            if c not in " ><=!":
+                cols['value2'] += c
+            else:
+                pass
+                
         cmds['condition'] = cols

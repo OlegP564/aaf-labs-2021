@@ -1,5 +1,5 @@
 from table import Table
-from container import pass_tree_dfs
+from container import pass_tree_dfs, pass_tree
 from interface import message
 
 
@@ -8,6 +8,8 @@ class Database:
         self.T = [] # tables    
     
     def cmd(self,cmd):
+        if cmd == None:
+            return
         if cmd['cmd'] == "CREATE":
             self.create(cmd)
         elif cmd['cmd'] == "INSERT":
@@ -49,20 +51,15 @@ class Database:
         
         
     def select(self, cmd):
+        
         for table in self.T:
             if table.name == cmd['table_name'] and not cmd["JOIN"]:
                 if not cmd['args']:
                     cmd['args'] = table.cols
                 if not cmd['condition']:
-                    table.select(cmd['args'], 1, '=', 1)
+                    table.select(cmd['args'], 1, '=', 1, lambda x: x)
                 else:
-                    table.select(cmd['args'], cmd['condition']['value1'], cmd['condition']['operator'], cmd['condition']['value2'])
-                
-            if cmd["JOIN"]:
-                if table.name == cmd['table_name']:
-                    t1 = table
-                if table.name == cmd['join_table']:
-                    t2 = table  
+                    table.select(cmd['args'], cmd['condition']['value1'], cmd['condition']['operator'], cmd['condition']['value2'], lambda x: x)
                     
         if cmd["JOIN"]:
             for table in self.T:
@@ -71,55 +68,72 @@ class Database:
                 if table.name ==cmd['join_table']:
                     t2 = table
             
-            
-            import numpy
             # read all tables into array
             arr1, arr2 = [],[]
-            pass_tree_dfs(t1.data.root, arr1)
-            pass_tree_dfs(t2.data.root, arr2)
-            # for more efficiency
-            import random
-            random.shuffle(arr1)
-            random.shuffle(arr2)
-            
-            w_cols = t1.cols + t2.cols
-            mask = []
-            # create wide mask
-                                      
-            wide_table = Table("wide", w_cols, [False for i in range(len(w_cols))])
-            
-            for node in arr1:
-                print(node[-1].value)
-                wide_table.insert(node[-1].value + [""]*len(t2.cols))
-                
-            for node in arr2:
-                wide_table.insert([""]*len(t1.cols) + node[-1].value)
-            # add rows to new wide table
-            
-            if cmd['join_args'][0] in w_cols and cmd['join_args'][0] in w_cols:
-                
-            # firstly, when col1==col2
-                pass
-                
-                
-            else:
-                message("[Select error]: incorrect join arguments")          
-            
-            
-            wide_table
-            if not cmd['args']:
-                cmd['args'] = wide_table.cols
-            if not cmd['condition']:
-                wide_table.select(cmd['args'], 1, '=', 1)
-            else:
-                wide_table.select(cmd['args'], cmd['condition']['value1'], cmd['condition']['operator'], cmd['condition']['value2'])
+            pass_tree_dfs(t1.data.root, t1.data.root, arr1)
+            pass_tree_dfs(t2.data.root, t2.data.root , arr2)
+            wide_table_to_disp = Table("wide", t1.cols + t2.cols, [False for i in range(len(t1.cols + t2.cols))], ordered=True)
+           
+            while len(arr1) < len(arr2):
+                arr1.append(['' for i in range(len(arr1[0]))])
+
+            while len(arr2) < len(arr1):
+                arr2.append(['' for i in range(len(arr2[0]))])
         
-            
-            # 1. create wide table t_wide
+             # joined to common table
                 
-            # 2. change sign
+                
+              #  
+                #
+               # 
+                #
+               # 
+                #
+               ## 
+        ####################
+        # manage conditons
+            try:
+                a, b = cmd['join_args'] 
+                if a in t1.cols:
+                    i1 = t1.cols.index(a)
+                    i2 = t2.cols.index(b)
+                if a in t2.cols:
+                    i1 = t1.cols.index(b) 
+                    i2 = t2.cols.index(a)     
+            except:
+                message("enter valid command")  
+                return
+            a1, a2 = [], []
             
-            # 3. delete all rows from table, which not satisfy JOIN condition
-          #  t_wide.delete(cmd['condition']['value1'], cmd['condition']['operator'], cmd['condition']['value2'])
-           # table.select(cmd['args'], cmd['condition']['value1'], cmd['condition']['operator'], cmd['condition']['value2'])
-    
+            for node1 in arr1:
+                flag = False
+                for node2 in arr2:
+                    if str(node1[i1]) == str(node2[i2]):
+                        wide_table_to_disp.insert(node1 + node2)  
+                        flag = True
+                if flag:
+                    flag = False
+                else:
+                    a1.append(node1)
+                #  a2.append(node2)                
+            for node2 in arr2:
+                flag = False
+                for node1 in arr1:
+                        if str(node1[i1]) == str(node2[i2]):
+                            flag = True
+                if flag:
+                    flag = False
+                else:
+                    a2.append(node2)
+                #  a2.append(node2)  
+            
+            for node1 in a1:
+                wide_table_to_disp.insert(node1 + ['' for i in range(len(arr2[0]))])
+            for node2 in a2:
+                wide_table_to_disp.insert(['' for i in range(len(arr1[0]))] + node2)                
+            if cmd['condition']:
+                wide_table_to_disp.select(cmd['args'], cmd['condition']['value1'], cmd['condition']['operator'], cmd['condition']['value2'], lambda x: str(x))
+            else:
+                wide_table_to_disp.display()
+
+        # wide_table.display()
