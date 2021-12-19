@@ -19,6 +19,7 @@ class Table:
     def __generate_index(self, values):
         index = [values[k] for k in self.imask]
         if not index:
+            import numpy as np
             index = np.random.randint(10000) + 1
             message("[Warning]: default indexation used")
             if self.ordered:

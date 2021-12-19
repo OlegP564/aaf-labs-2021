@@ -103,15 +103,17 @@ def parse_create(cmd, dictionary):
     
     
     
-    
 def parse_insert(cmd, dictionary):
     args = []
-    for arg in cmd[max(cmd.find("(")+1, 1+cmd.find(dictionary['table_name']) + len(dictionary['table_name'])): cmd.find(')')].replace(',', ' ').split(' '):
-        arg = arg.replace('\n', ' ').replace('\t', ' ').replace(' ', '')
+    if cmd.find('(') < 0 or cmd.find(')') < 0 or cmd.find('(') > cmd.find('('):
+        error("incorrect input 'INSERT'")
+    for arg in cmd[max(cmd.find("(")+1, 1+cmd.find(dictionary['table_name']) + len(dictionary['table_name'])): cmd.find(')')].replace(',', ' ').split('"'):
+        arg = arg.replace('\n', ' ').replace('\t', ' ').replace(' ', '').replace('"', '').replace("'", '')
         if len(arg) >= 1 and arg!='\n':
             args.append(arg)
 
     dictionary['args'] = args
+
     
     
 def parse_select(cmd, cmds):
@@ -150,7 +152,7 @@ def parse_select(cmd, cmds):
 
         for c in condition_str[0:index]:
             if c not in " ><=!":
-                cols['value1'] += c;
+                cols['value1'] += c
             else:
                 pass
         for c in condition_str[index-1:]:
@@ -179,19 +181,19 @@ def parse_delete(cmd, cmds):
         index = max(condition_str.find('>'), condition_str.find('='), condition_str.find('<'), condition_str.find('!')) 
 
         for c in condition_str[0:index]:
-            if c not in " ><=!":
-                cols['value1'] += c;
+            if c.replace('"', '').replace("'", '') not in " ><=!":
+                cols['value1'] += c.replace('"', '').replace("'", '')
             else:
                 pass
         for c in condition_str[index-1:]:
-            if c in "><=!":
-                cols['operator'] += c
+            if c.replace('"', '').replace("'", '') in "><=!":
+                cols['operator'] += c.replace('"', '').replace("'", '')
             else:
                 pass
                 
         for c in condition_str[index+1:]:
-            if c not in " ><=!":
-                cols['value2'] += c
+            if c.replace('"', '').replace("'", '') not in " ><=!":
+                cols['value2'] += c.replace('"', '').replace("'", '')
             else:
                 pass
                 
